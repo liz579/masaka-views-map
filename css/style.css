@@ -412,15 +412,16 @@ svg .lot.status-unreleased {
     }
 
     .map-container {
-        min-height: 68dvh;
+        min-height: 52dvh;
     }
 
     .map-wrapper {
-        min-height: 60dvh;
+        min-height: 44dvh;
     }
 
     .details-panel {
-        max-height: 250px;
+        max-height: 34dvh;
+        min-height: 170px;
     }
 
     .details-content {
