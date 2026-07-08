@@ -292,6 +292,10 @@ async function initMapInteractivity(){
   details.innerHTML = '<div class="small">Select a unit on the map</div>';
 
   // --- Pinch-zoom for mobile (uses SVG viewBox scaling) ---
+  console.log('Setting up pinch handler...');
+  console.log('SVG element:', svg);
+  console.log('SVG viewBox:', svg.getAttribute('viewBox'));
+  
   let pinchState = { active: false, startDist: 0, startViewBox: null };
   
   function getViewBox() {
@@ -309,11 +313,15 @@ async function initMapInteractivity(){
   }
 
   const mapContainer = document.getElementById('mapArea');
+  console.log('Map container:', mapContainer);
+  
   mapContainer.addEventListener('touchstart', (e) => {
+    console.log('TOUCHSTART - touches:', e.touches.length);
     if (e.touches.length === 2) {
       pinchState.active = true;
       pinchState.startDist = dist(e.touches[0], e.touches[1]);
       pinchState.startViewBox = getViewBox();
+      console.log('Pinch activated. StartDist:', pinchState.startDist);
       e.preventDefault();
     }
   }, { passive: false });
@@ -328,12 +336,14 @@ async function initMapInteractivity(){
       const newH = orig.h * scale;
       const newX = orig.x + (orig.w - newW) / 2;
       const newY = orig.y + (orig.h - newH) / 2;
+      console.log('Pinch move - ratio:', ratio, 'scale:', scale, 'newW:', newW);
       setViewBox({ x: newX, y: newY, w: newW, h: newH });
       e.preventDefault();
     }
   }, { passive: false });
 
   mapContainer.addEventListener('touchend', (e) => {
+    console.log('TOUCHEND');
     if (e.touches.length < 2) pinchState.active = false;
   }, { passive: false });
 
