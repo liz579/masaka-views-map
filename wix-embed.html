@@ -12,7 +12,8 @@ html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;color:#222
 .title{font-size:20px;font-weight:700;color:var(--accent);}
 .brand{font-size:12px;color:#555}
 .layout{display:flex;gap:12px;margin-top:12px}
-.map-area{flex:1;min-height:480px;background:#fff;border:1px solid #e6e6e6;position:relative;overflow:hidden}
+.map-area{flex:1;min-height:480px;background:#fff;border:1px solid #e6e6e6;position:relative;overflow:hidden;touch-action:none}
+@media (max-width:900px){.map-area{min-height:65vh}}
 .sidebar{width:320px;min-width:260px;background:#fff;border:1px solid #e6e6e6;padding:12px;border-radius:6px}
 /* make things mobile-first */
 @media (max-width:900px){.layout{flex-direction:column}.sidebar{width:100%}}
@@ -290,8 +291,44 @@ async function initMapInteractivity(){
   // initial auto-select none
   details.innerHTML = '<div class="small">Select a unit on the map</div>';
 
-  console.info('Map initialized successfully');
-}
-</script>
+  // --- Pinch-zoom & pan handler for mobile (scales SVG only) ---
+  let svgTransform = { scale: 1, panX: 0, panY: 0 };
+  let pinchState = { active: false, startDist: 0, startScale: 1, lastMidpoint: { x: 0, y: 0 } };
+
+  function dist(t1, t2) {
+    const dx = t2.clientX - t1.clientX, dy = t2.clientY - t1.clientY;
+    return Math.hypot(dx, dy);
+  }
+  function midpoint(t1, t2) {
+    return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+  }
+  function applySVGTransform() {
+    svg.style.transformOrigin = '0 0';
+    svg.style.transform = `scale(${svgTransform.scale}) translate(${svgTransform.panX}px, ${svgTransform.panY}px)`;
+  }
+
+  document.getElementById('mapArea').addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      pinchState.active = true;
+      pinchState.startDist = dist(e.touches[0], e.touches[1]);
+      pinchState.startScale = svgTransform.scale;
+      pinchState.lastMidpoint = midpoint(e.touches[0], e.touches[1]);
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.getElementById('mapArea').addEventListener('touchmove', (e) => {
+    if (pinchState.active && e.touches.length === 2) {
+      const currentDist = dist(e.touches[0], e.touches[1]);
+      const newScale = Math.max(1, Math.min(4, pinchState.startScale * (currentDist / pinchState.startDist)));
+      svgTransform.scale = newScale;
+      applySVGTransform();
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.getElementById('mapArea').addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) pinchState.active = false;
+  }, { passive: false });
 </body>
 </html>
