@@ -1,0 +1,26 @@
+[
+    {
+        "id": "A1",
+        "lotNumber": "Lot A1",
+        "size": "0.25 acres",
+        "price": "$45,000",
+        "status": "available",
+        "description": "Corner lot with street access"
+    },
+    {
+        "id": "A2",
+        "lotNumber": "Lot A2",
+        "size": "0.25 acres",
+        "price": "$48,000",
+        "status": "sold",
+        "description": "Middle lot"
+    },
+    {
+        "id": "A3",
+        "lotNumber": "Lot A3",
+        "size": "0.35 acres",
+        "price": "$55,000",
+        "status": "available",
+        "description": "Larger corner lot"
+    }
+]

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Masaka Views Estate — Interactive Plat Map</title>
+<style>
+:root{--accent:#0b6b3a;--accent-dark:#084f2b;--muted:#efefef;--tooltip-bg:#f2f2f2;--tooltip-border:#6b6b6b}
+html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;color:#222}
+.container{max-width:1280px;margin:0 auto;padding:12px}
+.header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.title{font-size:20px;font-weight:700;color:var(--accent);}
+.brand{font-size:12px;color:#555}
+.layout{display:flex;gap:12px;margin-top:12px}
+.map-area{flex:1;min-height:480px;background:#fff;border:1px solid #e6e6e6;position:relative;overflow:hidden}
+.sidebar{width:320px;min-width:260px;background:#fff;border:1px solid #e6e6e6;padding:12px;border-radius:6px}
+/* make things mobile-first */
+@media (max-width:900px){.layout{flex-direction:column}.sidebar{width:100%}}
+.map-area svg{width:100%;height:auto;display:block}
+.lot{cursor:pointer;transition:filter .12s, transform .08s}
+.lot:hover{filter:brightness(1.05);transform:translateY(-0.5px)}
+.lot.selected{stroke:#4a4a4a !important;stroke-width:3 !important}
+.legend{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.legend .item{display:flex;gap:8px;align-items:center}
+.legend .sw{width:18px;height:12px;border-radius:3px;border:1px solid #bbb}
+.details img{max-width:100%;border-radius:6px}
+.btn{display:inline-block;background:var(--accent);color:#fff;padding:8px 12px;border-radius:6px;text-decoration:none}
+.small{font-size:13px;color:#555}
+.tooltip{position:fixed;z-index:9999;pointer-events:none;padding:8px;border-radius:8px;background:var(--tooltip-bg);border:1px solid var(--tooltip-border);box-shadow:0 6px 18px rgba(0,0,0,.08);font-size:13px;line-height:1.3;max-width:260px}
+.tooltip .status{display:inline-block;padding:4px 8px;border-radius:999px;color:#fff;font-size:12px;margin-top:6px}
+.tooltip .row{display:block}
+.tooltip .arrow{position:absolute;width:14px;height:14px;background:var(--tooltip-bg);border-left:1px solid var(--tooltip-border);border-top:1px solid var(--tooltip-border);transform:rotate(45deg)}
+.search{margin-left:auto;display:flex;gap:6px}
+.input{padding:8px;border:1px solid #ddd;border-radius:6px}
+.hint{font-size:12px;color:#666;margin-top:8px}
+.footer-note{font-size:12px;color:#666;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="title">Masaka Views Estate</div>
+      <div class="brand small">by <a href="https://fortisgreenhousing.com/masaka-views" target="_blank" rel="noopener" style="color:var(--accent-dark);text-decoration:underline">Fortis Green Housing</a></div>
+    </div>
+    <div class="search">
+      <input id="searchInput" class="input" placeholder="Search unit (ID or name)" />
+      <button id="clearBtn" class="input">Clear</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="map-area" id="mapArea">
+      <!-- Inline SVG (map) -->
+      <!-- Note: SVG root has id="mapSVG" so JS can access it. -->
+      <!-- Begin inlined SVG -->
+      <!-- (SVG content copied from svg/map.svg with id added) -->
+      <!-- For maintainability: to update the SVG file later, swap the <svg> block here. -->
+
+      <!-- SVG START -->
+      <div id="svgContainer">
+<!-- SVG will be inserted here by script (keeps HTML file size manageable in editor) -->
+</div>
+      <!-- SVG END -->
+
+      <!-- tooltip bubble -->
+      <div id="tooltip" class="tooltip" style="display:none">
+        <div id="tooltipContent"></div>
+        <div class="arrow" id="tooltipArrow"></div>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="small">Map legend</div>
+      <div id="legend" class="legend" aria-hidden="false"></div>
+
+      <hr />
+
+      <div id="details" class="details">
+        <div class="small">Select a unit on the map</div>
+      </div>
+
+      <div class="hint">Prices shown in USD (primary). RWF shown using exchange rate (editable in file).</div>
+      <div class="footer-note">To connect your Google Sheet: open this file and set SHEET_ENDPOINT at the top of the script to your Apps Script URL.</div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* CONFIG — edit these values in this file when needed:
+   - SHEET_ENDPOINT: replace with your Apps Script endpoint that returns JSON array of rows (see README of your appscript)
+   - EXCHANGE_RATE: RWF per 1 USD (user chose 1470)
+*/
+const CONFIG = {
+  SHEET_ENDPOINT: 'REPLACE_WITH_YOUR_APPS_SCRIPT_URL', // <-- put your Apps Script endpoint here (CORS-enabled)
+  EXCHANGE_RATE: 1470,
+  PRIMARY_CURRENCY: 'USD',
+  SECONDARY_CURRENCY: 'RWF',
+  BOOK_FORM_URL: 'https://docs.google.com/forms/d/1s1bDxHw0f1DfecVyu2OAps2Epb02hyfYIEq5B1Pd49I/edit'
+};
+
+// Status -> colors
+const STATUS_COLORS = {
+  'Available': '#2ecc71',
+  'Sold': '#e74c3c',
+  'Reserved': '#f39c12',
+  'Pre-Booked': '#f1c40f',
+  'Unreleased': '#95a5a6',
+  '': '#bdc3c7'
+};
+
+// Utility: format currency USD
+function fmtUSD(n){ if(n===null||n===undefined||n==='') return '—'; return '$' + Number(n).toLocaleString('en-US', {maximumFractionDigits:0}); }
+function fmtRWF(n){ if(n===null||n===undefined||n==='') return '—'; return new Intl.NumberFormat('en-RW', {style:'currency',currency:'RWF',maximumFractionDigits:0}).format(Math.round(n * CONFIG.EXCHANGE_RATE)); }
+
+// Load the SVG file and insert into page. This keeps the big SVG out of visible HTML source initially.
+(async function(){
+  const svgPath = 'svg/map.svg';
+  // Try fetch to local folder (works when hosted). If fails, fall back to embedding the server-side file content (below).
+  try{
+    const resp = await fetch(svgPath);
+    if(resp.ok){
+      const text = await resp.text();
+      mountSVG(text);
+    } else { throw new Error('fetch failed'); }
+  }catch(e){
+    // Fallback: embed the SVG string directly (inserted below as embeddedSVGString)
+    mountSVG(embeddedSVGString);
+  }
+})();
+
+// IMPORTANT: the large SVG source is injected below as embeddedSVGString variable.
+// If you prefer to keep the svg file in /svg/map.svg on your server, ensure the path above works.
+
+function mountSVG(svgText){
+  // make sure svg has id="mapSVG" on the root element
+  const replaced = svgText.replace('<svg ', '<svg id="mapSVG" ');
+  document.getElementById('svgContainer').innerHTML = replaced;
+  initMapInteractivity();
+}
+
+// --- EMBEDDED SVG string (fallback) ---
+const embeddedSVGString = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1982.81 953.651">...TRUNCATED_FOR_BUNDLE_REPLACEMENT...</svg>`;
+
+/* NOTE: For readability, when editing locally keep the file svg/map.svg and remove the fallback long string.
+   The embeddedSVGString currently contains a short placeholder to avoid huge bundle duplication here — the live loader above will fetch svg/map.svg in your project folder. If you prefer inline-only, replace the placeholder with the full raw SVG text (from your file) and remove the fetch attempt. */
+
+// Core map logic
+async function initMapInteractivity(){
+  const svg = document.getElementById('mapSVG');
+  if(!svg){ console.error('SVG not found in container'); return; }
+
+  // Collect interactive lot elements — any element inside the Interactive_Lots group with an id
+  const interactiveGroup = svg.querySelector('#Interactive_Lots') || svg;
+  const lotElems = Array.from(interactiveGroup.querySelectorAll('[id]'))
+    .filter(el => el.id && !el.id.startsWith('Layer') && el.id !== 'Interactive_Lots');
+
+  // Normalize style hooks
+  lotElems.forEach(el => {
+    el.classList.add('lot');
+    // ensure pointer cursor
+    el.style.cursor = 'pointer';
+    // set initial stroke and fill fallback
+    if(!el.getAttribute('stroke')) el.setAttribute('stroke','#333');
+    if(!el.getAttribute('stroke-width')) el.setAttribute('stroke-width','1');
+
+    // events
+    el.addEventListener('click', ev => { ev.stopPropagation(); selectLot(el.id); });
+    el.addEventListener('mouseenter', ev => { showTooltipFor(el); });
+    el.addEventListener('mouseleave', ev => { hideTooltip(); });
+    // touch
+    el.addEventListener('touchstart', ev => { ev.preventDefault(); showTooltipFor(el); }, {passive:false});
+    el.addEventListener('touchend', ev => { /* keep tooltip until next interaction */ }, {passive:true});
+  });
+
+  // data container
+  let lotData = {};
+
+  // Fetch data from Google Apps Script endpoint if configured
+  if(CONFIG.SHEET_ENDPOINT && !CONFIG.SHEET_ENDPOINT.includes('REPLACE_WITH')){
+    try{
+      const res = await fetch(CONFIG.SHEET_ENDPOINT);
+      if(res.ok){
+        const json = await res.json();
+        // Expecting an array of objects with UnitID key matching SVG ids
+        json.forEach(row => { lotData[row.UnitID] = row; });
+      }else{ console.warn('Could not fetch sheet data:', res.status); }
+    }catch(e){ console.warn('Error fetching sheet data', e); }
+  } else {
+    console.info('No SHEET_ENDPOINT configured; map will work with SVG ids only. Set CONFIG.SHEET_ENDPOINT to your Apps Script URL in this file.');
+  }
+
+  // Build legend counts from lotData where available; otherwise default all Unreleased
+  function buildLegend(){
+    const counts = {}; Object.keys(STATUS_COLORS).forEach(k=>counts[k]=0);
+    lotElems.forEach(el=>{
+      const id = el.id;
+      const row = lotData[id];
+      const status = (row && row.Status) ? row.Status : 'Unreleased';
+      counts[status] = (counts[status]||0) + 1;
+      // color the lot by status
+      const color = STATUS_COLORS[status] || STATUS_COLORS[''];
+      // apply fill color but keep original stroke
+      try{ el.style.fill = color; el.style.opacity = 0.95; }catch(e){}
+    });
+    const legend = document.getElementById('legend'); legend.innerHTML='';
+    for(const [status,color] of Object.entries(STATUS_COLORS)){
+      if(status === '') continue;
+      const div = document.createElement('div'); div.className='item';
+      const sw = document.createElement('span'); sw.className='sw'; sw.style.background=color; sw.style.borderColor='#bdbdbd';
+      const label = document.createElement('div'); label.innerHTML = `${status} <span style="color:#666;font-size:13px">(${counts[status]||0})</span>`;
+      div.appendChild(sw); div.appendChild(label); legend.appendChild(div);
+    }
+  }
+  buildLegend();
+
+  // tooltip behaviour
+  const tooltip = document.getElementById('tooltip');
+  const tooltipContent = document.getElementById('tooltipContent');
+  const tooltipArrow = document.getElementById('tooltipArrow');
+
+  function showTooltipFor(el){
+    const id = el.id; const data = lotData[id] || {UnitID:id, Name:id, Status: 'Unreleased', Price:''};
+    const priceUSD = data.Price || data.PriceUSD || '';
+    const htmlLines = [];
+    htmlLines.push(`<span class="row"><strong>${data.Name || id}</strong></span>`);
+    if(priceUSD) htmlLines.push(`<span class="row">${fmtUSD(priceUSD)} (${CONFIG.PRIMARY_CURRENCY})</span>`);
+    if(CONFIG.SECONDARY_CURRENCY && priceUSD) htmlLines.push(`<span class="row small">${fmtRWF(Number(priceUSD))} (${CONFIG.SECONDARY_CURRENCY})</span>`);
+    // status badge
+    const status = data.Status || 'Unreleased';
+    const statusColor = STATUS_COLORS[status] || STATUS_COLORS[''];
+    htmlLines.push(`<span class="row"><span class="status" style="background:${statusColor}">${status}</span></span>`);
+    // line breaks per request
+    tooltipContent.innerHTML = htmlLines.join('\n');
+
+    // compute position (center top of element bounding box)
+    const bbox = el.getBBox();
+    const pt = svg.createSVGPoint(); pt.x = bbox.x + bbox.width/2; pt.y = bbox.y + bbox.height/6; // point above center
+    const screenPt = pt.matrixTransform(svg.getScreenCTM());
+
+    // position tooltip (fixed coords)
+    const left = screenPt.x + 10; const top = screenPt.y - 10;
+    tooltip.style.left = (left) + 'px'; tooltip.style.top = (top) + 'px'; tooltip.style.display = 'block';
+    // arrow placement
+    tooltipArrow.style.left = '8px'; tooltipArrow.style.top = (tooltip.offsetHeight - 6) + 'px';
+  }
+  function hideTooltip(){ tooltip.style.display='none'; }
+
+  // details panel on selection
+  const details = document.getElementById('details');
+  let selectedId = null;
+  function selectLot(id){
+    if(selectedId){
+      const prev = document.getElementById(selectedId); if(prev) prev.classList.remove('selected');
+    }
+    selectedId = id;
+    const el = document.getElementById(id); if(el) el.classList.add('selected');
+    const d = lotData[id] || {UnitID:id, Name:id, Description:'', ImageURL:'', Status:'Unreleased', Price:''};
+    const priceUSD = d.Price || d.PriceUSD || '';
+    details.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1"><strong>${d.Name||id}</strong><div class="small">ID: ${id}</div></div>
+      </div>
+      <div style="margin-top:8px">${d.ImageURL?`<img src="${d.ImageURL}" alt="${d.Name||id}"/>`:''}</div>
+      <div style="margin-top:8px">${d.Description?d.Description:''}</div>
+      <div style="margin-top:8px;font-weight:600">Price: ${priceUSD?fmtUSD(priceUSD):'—'} <span style="font-weight:400;color:#666;font-size:13px">(${CONFIG.PRIMARY_CURRENCY})</span></div>
+      <div class="small" style="margin-top:4px">${priceUSD?fmtRWF(Number(priceUSD)) + ' (' + CONFIG.SECONDARY_CURRENCY + ')':''}</div>
+      <div style="margin-top:8px"><span class="status" style="background:${STATUS_COLORS[d.Status||'Unreleased']};">${d.Status||'Unreleased'}</span></div>
+      <div style="margin-top:12px"><a class="btn" href="${CONFIG.BOOK_FORM_URL}?entry.0=${encodeURIComponent(id)}" target="_blank" rel="noopener">Book this unit</a></div>
+    `;
+  }
+
+  // search
+  const searchInput = document.getElementById('searchInput');
+  document.getElementById('clearBtn').addEventListener('click', ()=>{ searchInput.value=''; applyFilter(''); });
+  searchInput.addEventListener('input', e=>{ applyFilter(e.target.value); });
+
+  function applyFilter(q){
+    const ql = (q||'').toLowerCase().trim();
+    lotElems.forEach(el=>{
+      const id = el.id; const row = lotData[id] || {}; const name = (row.Name||'').toLowerCase();
+      const keep = !ql || id.toLowerCase().includes(ql) || name.includes(ql);
+      el.style.opacity = keep ? 1 : 0.15;
+    });
+  }
+
+  // click outside to clear selection
+  document.addEventListener('click', ()=>{ if(selectedId){ const prev=document.getElementById(selectedId); if(prev) prev.classList.remove('selected'); selectedId=null; details.innerHTML='<div class="small">Select a unit on the map</div>'; } });
+
+  // initial auto-select none
+  details.innerHTML = '<div class="small">Select a unit on the map</div>';
+
+  console.info('Map initialized successfully');
+}
+</script>
+</body>
+</html>

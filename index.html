@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Plat Map</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title"><strong>Masaka Views Estate</strong><br><span class="subtitle">by <a href="https://fortisgreenhousing.com/masaka-views" target="_blank">Fortis Green Housing</a></span></h1>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by Unit ID or Name...">
+                <button id="clearBtn" class="btn-clear" style="display:none;">✕</button>
+            </div>
+            <div class="loading-indicator" id="loadingIndicator">
+                <span>Loading map data...</span>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Map Container -->
+            <div class="map-container">
+                <div id="mapWrapper" class="map-wrapper">
+                    <!-- SVG will load here -->
+                </div>
+                <div class="map-legend">
+                    <div class="legend-item">
+                        <div class="legend-color available"></div>
+                        <span>Available <span class="legend-count">(0)</span></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color reserved"></div>
+                        <span>Reserved <span class="legend-count">(0)</span></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color prebooked"></div>
+                        <span>Pre-Booked <span class="legend-count">(0)</span></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color sold"></div>
+                        <span>Sold <span class="legend-count">(0)</span></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color unreleased"></div>
+                        <span>Unreleased <span class="legend-count">(0)</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details Sidebar -->
+            <div class="details-panel">
+                <div id="detailsContent" class="details-content">
+                    <p class="no-selection">👈 Click a lot to view details</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/map.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "plat-map-project",
+  "version": "1.0.0",
+  "description": "Interactive mobile-first SVG plat map connected to Google Sheets",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"No tests configured\""
+  },
+  "keywords": ["plat-map", "svg", "interactive", "google-sheets"],
+  "author": "",
+  "license": "MIT"
+}
+
