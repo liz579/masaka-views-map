@@ -291,62 +291,6 @@ async function initMapInteractivity(){
   // initial auto-select none
   details.innerHTML = '<div class="small">Select a unit on the map</div>';
 
-  // --- Pinch-zoom for mobile (uses SVG viewBox scaling) ---
-  console.log('Setting up pinch handler...');
-  console.log('SVG element:', svg);
-  console.log('SVG viewBox:', svg.getAttribute('viewBox'));
-  
-  let pinchState = { active: false, startDist: 0, startViewBox: null };
-  
-  function getViewBox() {
-    const vb = svg.getAttribute('viewBox').split(' ').map(Number);
-    return { x: vb[0], y: vb[1], w: vb[2], h: vb[3] };
-  }
-  
-  function setViewBox(vb) {
-    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
-  }
-  
-  function dist(t1, t2) {
-    const dx = t2.clientX - t1.clientX, dy = t2.clientY - t1.clientY;
-    return Math.hypot(dx, dy);
-  }
-
-  const mapContainer = document.getElementById('mapArea');
-  console.log('Map container:', mapContainer);
-  
-  mapContainer.addEventListener('touchstart', (e) => {
-    console.log('TOUCHSTART - touches:', e.touches.length);
-    if (e.touches.length === 2) {
-      pinchState.active = true;
-      pinchState.startDist = dist(e.touches[0], e.touches[1]);
-      pinchState.startViewBox = getViewBox();
-      console.log('Pinch activated. StartDist:', pinchState.startDist);
-      e.preventDefault();
-    }
-  }, { passive: false });
-
-  mapContainer.addEventListener('touchmove', (e) => {
-    if (pinchState.active && e.touches.length === 2 && pinchState.startViewBox) {
-      const currentDist = dist(e.touches[0], e.touches[1]);
-      const ratio = currentDist / pinchState.startDist;
-      const scale = 1 / Math.min(3, Math.max(0.5, ratio));
-      const orig = pinchState.startViewBox;
-      const newW = orig.w * scale;
-      const newH = orig.h * scale;
-      const newX = orig.x + (orig.w - newW) / 2;
-      const newY = orig.y + (orig.h - newH) / 2;
-      console.log('Pinch move - ratio:', ratio, 'scale:', scale, 'newW:', newW);
-      setViewBox({ x: newX, y: newY, w: newW, h: newH });
-      e.preventDefault();
-    }
-  }, { passive: false });
-
-  mapContainer.addEventListener('touchend', (e) => {
-    console.log('TOUCHEND');
-    if (e.touches.length < 2) pinchState.active = false;
-  }, { passive: false });
-
-  console.info('Map initialized successfully with pinch-zoom enabled');
+  console.info('Map initialized successfully');
 </body>
 </html>
