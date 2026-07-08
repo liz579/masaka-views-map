@@ -5,7 +5,9 @@ class PlatMap {
         this.lotsData = {};
         this.selectedLot = null;
         this.searchTerm = '';
+        this.svgElement = null;
         this.googleSheetUrl = 'https://script.google.com/macros/s/AKfycbwd_sSg5XZTFJOJLrFBR0Fq3Hj3lIcVek6fExuPwHOqfPlzIR5VxJd2ZxrXMhy3hQ/exec';
+        window.addEventListener('resize', () => this.updateMobileMapLayout());
     }
 
     /**
@@ -16,10 +18,40 @@ class PlatMap {
             const response = await fetch(svgPath);
             const svgText = await response.text();
             this.mapContainer.innerHTML = svgText;
+            this.svgElement = this.mapContainer.querySelector('svg');
+            this.updateMobileMapLayout();
         } catch (error) {
             console.error('Error loading SVG:', error);
             this.mapContainer.innerHTML = `<p style="padding: 20px; color: red;">Error loading map. Make sure svg/map.svg exists.</p>`;
         }
+    }
+
+    /**
+     * Make mobile map start larger and remain visible after orientation changes
+     */
+    updateMobileMapLayout() {
+        if (!this.svgElement) return;
+
+        const isMobile = window.matchMedia('(max-width: 640px)').matches;
+
+        if (isMobile) {
+            this.svgElement.style.width = '170%';
+            this.svgElement.style.maxWidth = 'none';
+            this.svgElement.style.height = 'auto';
+
+            requestAnimationFrame(() => {
+                const overflowX = this.mapContainer.scrollWidth - this.mapContainer.clientWidth;
+                if (overflowX > 0) {
+                    this.mapContainer.scrollLeft = Math.round(overflowX / 2);
+                }
+            });
+            return;
+        }
+
+        this.svgElement.style.width = '100%';
+        this.svgElement.style.maxWidth = '100%';
+        this.svgElement.style.height = 'auto';
+        this.mapContainer.scrollLeft = 0;
     }
 
     /**
