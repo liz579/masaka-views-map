@@ -92,7 +92,7 @@ html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;color:#222
    - EXCHANGE_RATE: RWF per 1 USD (user chose 1470)
 */
 const CONFIG = {
-  SHEET_ENDPOINT: 'REPLACE_WITH_YOUR_APPS_SCRIPT_URL', // <-- put your Apps Script endpoint here (CORS-enabled)
+  SHEET_ENDPOINT: '/api/proxy', // Use Vercel proxy; set SHEET_ENDPOINT_REMOTE in Vercel to your Apps Script URL
   EXCHANGE_RATE: 1470,
   PRIMARY_CURRENCY: 'USD',
   SECONDARY_CURRENCY: 'RWF',
