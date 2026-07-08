@@ -291,44 +291,52 @@ async function initMapInteractivity(){
   // initial auto-select none
   details.innerHTML = '<div class="small">Select a unit on the map</div>';
 
-  // --- Pinch-zoom & pan handler for mobile (scales SVG only) ---
-  let svgTransform = { scale: 1, panX: 0, panY: 0 };
-  let pinchState = { active: false, startDist: 0, startScale: 1, lastMidpoint: { x: 0, y: 0 } };
-
+  // --- Pinch-zoom for mobile (uses SVG viewBox scaling) ---
+  let pinchState = { active: false, startDist: 0, startViewBox: null };
+  
+  function getViewBox() {
+    const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+    return { x: vb[0], y: vb[1], w: vb[2], h: vb[3] };
+  }
+  
+  function setViewBox(vb) {
+    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  }
+  
   function dist(t1, t2) {
     const dx = t2.clientX - t1.clientX, dy = t2.clientY - t1.clientY;
     return Math.hypot(dx, dy);
   }
-  function midpoint(t1, t2) {
-    return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
-  }
-  function applySVGTransform() {
-    svg.style.transformOrigin = '0 0';
-    svg.style.transform = `scale(${svgTransform.scale}) translate(${svgTransform.panX}px, ${svgTransform.panY}px)`;
-  }
 
-  document.getElementById('mapArea').addEventListener('touchstart', (e) => {
+  const mapContainer = document.getElementById('mapArea');
+  mapContainer.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       pinchState.active = true;
       pinchState.startDist = dist(e.touches[0], e.touches[1]);
-      pinchState.startScale = svgTransform.scale;
-      pinchState.lastMidpoint = midpoint(e.touches[0], e.touches[1]);
+      pinchState.startViewBox = getViewBox();
       e.preventDefault();
     }
   }, { passive: false });
 
-  document.getElementById('mapArea').addEventListener('touchmove', (e) => {
-    if (pinchState.active && e.touches.length === 2) {
+  mapContainer.addEventListener('touchmove', (e) => {
+    if (pinchState.active && e.touches.length === 2 && pinchState.startViewBox) {
       const currentDist = dist(e.touches[0], e.touches[1]);
-      const newScale = Math.max(1, Math.min(4, pinchState.startScale * (currentDist / pinchState.startDist)));
-      svgTransform.scale = newScale;
-      applySVGTransform();
+      const ratio = currentDist / pinchState.startDist;
+      const scale = 1 / Math.min(3, Math.max(0.5, ratio));
+      const orig = pinchState.startViewBox;
+      const newW = orig.w * scale;
+      const newH = orig.h * scale;
+      const newX = orig.x + (orig.w - newW) / 2;
+      const newY = orig.y + (orig.h - newH) / 2;
+      setViewBox({ x: newX, y: newY, w: newW, h: newH });
       e.preventDefault();
     }
   }, { passive: false });
 
-  document.getElementById('mapArea').addEventListener('touchend', (e) => {
+  mapContainer.addEventListener('touchend', (e) => {
     if (e.touches.length < 2) pinchState.active = false;
   }, { passive: false });
+
+  console.info('Map initialized successfully with pinch-zoom enabled');
 </body>
 </html>
