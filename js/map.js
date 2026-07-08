@@ -6,6 +6,16 @@ class PlatMap {
         this.selectedLot = null;
         this.searchTerm = '';
         this.svgElement = null;
+        this.baseViewBox = null;
+        this.pinchState = {
+            active: false,
+            startDistance: 0,
+            startViewBox: null,
+            startCenterSvg: null
+        };
+        this.onTouchStart = null;
+        this.onTouchMove = null;
+        this.onTouchEnd = null;
         this.googleSheetUrl = 'https://script.google.com/macros/s/AKfycbwd_sSg5XZTFJOJLrFBR0Fq3Hj3lIcVek6fExuPwHOqfPlzIR5VxJd2ZxrXMhy3hQ/exec';
         window.addEventListener('resize', () => this.updateMobileMapLayout());
     }
@@ -19,6 +29,8 @@ class PlatMap {
             const svgText = await response.text();
             this.mapContainer.innerHTML = svgText;
             this.svgElement = this.mapContainer.querySelector('svg');
+            this.initializeViewBox();
+            this.initializePinchZoom();
             this.updateMobileMapLayout();
         } catch (error) {
             console.error('Error loading SVG:', error);
@@ -26,13 +38,155 @@ class PlatMap {
         }
     }
 
+    initializeViewBox() {
+        if (!this.svgElement) return;
+
+        const currentViewBox = this.parseViewBox(this.svgElement.getAttribute('viewBox'));
+        if (currentViewBox) {
+            this.baseViewBox = { ...currentViewBox };
+            return;
+        }
+
+        const width = Number(this.svgElement.getAttribute('width')) || this.svgElement.clientWidth;
+        const height = Number(this.svgElement.getAttribute('height')) || this.svgElement.clientHeight;
+        if (width > 0 && height > 0) {
+            const fallback = { x: 0, y: 0, width, height };
+            this.baseViewBox = fallback;
+            this.setViewBox(fallback);
+        }
+    }
+
+    parseViewBox(value) {
+        if (!value) return null;
+        const parts = value.trim().split(/\s+/).map(Number);
+        if (parts.length !== 4 || parts.some(Number.isNaN)) return null;
+        return { x: parts[0], y: parts[1], width: parts[2], height: parts[3] };
+    }
+
+    setViewBox(viewBox) {
+        if (!this.svgElement) return;
+        this.svgElement.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`);
+    }
+
+    getCurrentViewBox() {
+        if (!this.svgElement) return null;
+        return this.parseViewBox(this.svgElement.getAttribute('viewBox'));
+    }
+
+    getTouchDistance(touchA, touchB) {
+        const dx = touchB.clientX - touchA.clientX;
+        const dy = touchB.clientY - touchA.clientY;
+        return Math.hypot(dx, dy);
+    }
+
+    getTouchCenter(touchA, touchB) {
+        return {
+            x: (touchA.clientX + touchB.clientX) / 2,
+            y: (touchA.clientY + touchB.clientY) / 2
+        };
+    }
+
+    clientToSvgPoint(clientX, clientY) {
+        if (!this.svgElement) return null;
+        const ctm = this.svgElement.getScreenCTM();
+        if (!ctm) return null;
+        const point = this.svgElement.createSVGPoint();
+        point.x = clientX;
+        point.y = clientY;
+        return point.matrixTransform(ctm.inverse());
+    }
+
+    clampViewBox(viewBox) {
+        if (!this.baseViewBox) return viewBox;
+        const maxX = this.baseViewBox.x + this.baseViewBox.width - viewBox.width;
+        const maxY = this.baseViewBox.y + this.baseViewBox.height - viewBox.height;
+        return {
+            x: Math.min(Math.max(viewBox.x, this.baseViewBox.x), maxX),
+            y: Math.min(Math.max(viewBox.y, this.baseViewBox.y), maxY),
+            width: viewBox.width,
+            height: viewBox.height
+        };
+    }
+
+    initializePinchZoom() {
+        if (!this.mapContainer || !this.svgElement) return;
+
+        if (this.onTouchStart) {
+            this.mapContainer.removeEventListener('touchstart', this.onTouchStart);
+            this.mapContainer.removeEventListener('touchmove', this.onTouchMove);
+            this.mapContainer.removeEventListener('touchend', this.onTouchEnd);
+            this.mapContainer.removeEventListener('touchcancel', this.onTouchEnd);
+        }
+
+        const minZoom = 1;
+        const maxZoom = 4;
+
+        this.onTouchStart = (event) => {
+            if (event.touches.length !== 2) return;
+            const currentViewBox = this.getCurrentViewBox();
+            if (!currentViewBox) return;
+
+            const centerClient = this.getTouchCenter(event.touches[0], event.touches[1]);
+            const centerSvg = this.clientToSvgPoint(centerClient.x, centerClient.y);
+            if (!centerSvg) return;
+
+            this.pinchState.active = true;
+            this.pinchState.startDistance = this.getTouchDistance(event.touches[0], event.touches[1]);
+            this.pinchState.startViewBox = currentViewBox;
+            this.pinchState.startCenterSvg = centerSvg;
+            event.preventDefault();
+        };
+
+        this.onTouchMove = (event) => {
+            if (!this.pinchState.active || event.touches.length !== 2 || !this.baseViewBox) return;
+
+            const distance = this.getTouchDistance(event.touches[0], event.touches[1]);
+            if (distance <= 0 || this.pinchState.startDistance <= 0) return;
+
+            const rawScale = this.pinchState.startDistance / distance;
+            const nextWidth = this.pinchState.startViewBox.width * rawScale;
+            const minWidth = this.baseViewBox.width / maxZoom;
+            const maxWidth = this.baseViewBox.width / minZoom;
+            const width = Math.min(Math.max(nextWidth, minWidth), maxWidth);
+            const height = (width * this.baseViewBox.height) / this.baseViewBox.width;
+
+            const center = this.pinchState.startCenterSvg;
+            const start = this.pinchState.startViewBox;
+            const ratioX = (center.x - start.x) / start.width;
+            const ratioY = (center.y - start.y) / start.height;
+
+            const unclamped = {
+                x: center.x - (width * ratioX),
+                y: center.y - (height * ratioY),
+                width,
+                height
+            };
+
+            this.setViewBox(this.clampViewBox(unclamped));
+            event.preventDefault();
+        };
+
+        this.onTouchEnd = (event) => {
+            if (event.touches.length < 2) {
+                this.pinchState.active = false;
+            }
+        };
+
+        this.mapContainer.addEventListener('touchstart', this.onTouchStart, { passive: false });
+        this.mapContainer.addEventListener('touchmove', this.onTouchMove, { passive: false });
+        this.mapContainer.addEventListener('touchend', this.onTouchEnd, { passive: true });
+        this.mapContainer.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
+    }
+
     /**
      * Make mobile map start larger and remain visible after orientation changes
      */
     updateMobileMapLayout() {
-        if (!this.svgElement) return;
+        if (!this.svgElement || !this.baseViewBox) return;
 
         const isMobile = window.matchMedia('(max-width: 640px)').matches;
+        this.setViewBox(this.baseViewBox);
+        this.pinchState.active = false;
 
         if (isMobile) {
             this.svgElement.style.width = '170%';
