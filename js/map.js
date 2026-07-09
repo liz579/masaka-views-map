@@ -273,7 +273,6 @@ class PlatMap {
             if (this.mapContainer.setPointerCapture) {
                 this.mapContainer.setPointerCapture(event.pointerId);
             }
-            event.preventDefault();
         };
 
         this.onPointerMove = (event) => {
@@ -711,8 +710,8 @@ class PlatMap {
             lot.classList.toggle('filtered-out', !categoryMatch);
 
             const statusKey = lotData.status.toLowerCase().replace(/\s+/g, '');
-            const statusMatch = !hasStatusFocus || statusKey === this.activeStatusFilter;
-            lot.classList.toggle('status-focus-hit', statusMatch);
+            const statusMatch = statusKey === this.activeStatusFilter;
+            lot.classList.toggle('status-focus-hit', hasStatusFocus && statusMatch);
         });
     }
 
