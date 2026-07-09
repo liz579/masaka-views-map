@@ -26,6 +26,7 @@ class PlatMap {
             active: false,
             pointerId: null,
             pointerType: null,
+            startTargetUnitId: null,
             lastX: 0,
             lastY: 0,
             moved: false,
@@ -268,13 +269,12 @@ class PlatMap {
             this.dragState.active = true;
             this.dragState.pointerId = event.pointerId;
             this.dragState.pointerType = event.pointerType || 'mouse';
+            const startLotTarget = event.target && event.target.closest ? event.target.closest('.lot[data-unit-id]') : null;
+            this.dragState.startTargetUnitId = startLotTarget ? startLotTarget.dataset.unitId : null;
             this.dragState.lastX = event.clientX;
             this.dragState.lastY = event.clientY;
             this.dragState.moved = false;
             this.mapContainer.style.cursor = 'grabbing';
-            if (this.mapContainer.setPointerCapture) {
-                this.mapContainer.setPointerCapture(event.pointerId);
-            }
         };
 
         this.onPointerMove = (event) => {
@@ -317,25 +317,18 @@ class PlatMap {
         this.onPointerUp = (event) => {
             if (!this.dragState.active) return;
 
-            if (this.mapContainer.releasePointerCapture && this.dragState.pointerId !== null) {
-                try {
-                    this.mapContainer.releasePointerCapture(this.dragState.pointerId);
-                } catch (e) {
-                    // ignore capture release errors from ended pointers
-                }
-            }
-
             this.dragState.active = false;
             this.dragState.pointerId = null;
             this.dragState.pointerType = null;
             this.mapContainer.style.cursor = 'grab';
 
-            const lotTarget = event.target && event.target.closest ? event.target.closest('.lot[data-unit-id]') : null;
-            if (!this.dragState.moved && lotTarget) {
-                this.selectLot(lotTarget.dataset.unitId);
+            if (!this.dragState.moved && this.dragState.startTargetUnitId) {
+                this.selectLot(this.dragState.startTargetUnitId);
+                this.dragState.startTargetUnitId = null;
                 this.dragState.suppressLotClick = false;
                 return;
             }
+            this.dragState.startTargetUnitId = null;
 
             if (this.dragState.moved) {
                 this.dragState.suppressLotClick = true;

@@ -174,11 +174,21 @@ body {
 }
 
 .map-wrapper.loading-flash {
-    animation: loadingPulseMap 1s ease-in-out infinite;
+    animation: loadingPulseMap 0.8s ease-in-out infinite;
+}
+
+.map-wrapper.loading-flash::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: rgba(37, 123, 202, 0.16);
+    animation: loadingOverlayPulse 0.8s ease-in-out infinite;
+    z-index: 4;
 }
 
 .map-wrapper.loading-flash svg {
-    opacity: 0.55;
+    opacity: 0.4;
 }
 
 .map-compass {
@@ -487,7 +497,12 @@ svg .lot.status-unreleased {
 
 @keyframes loadingPulseMap {
     0%, 100% { background-color: #f9f9f9; }
-    50% { background-color: #eef4fb; }
+    50% { background-color: #dcecff; }
+}
+
+@keyframes loadingOverlayPulse {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 0.55; }
 }
 
 /* Mobile Responsive */
