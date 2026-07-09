@@ -11,9 +11,12 @@
         <!-- Header -->
         <header class="header">
             <h1 class="title"><strong>Masaka Views Estate</strong><br><span class="subtitle">by <a href="https://fortisgreenhousing.com/masaka-views" target="_blank">Fortis Green Housing</a></span></h1>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search by Unit ID or Name...">
-                <button id="clearBtn" class="btn-clear" style="display:none;">✕</button>
+            <div class="category-menu" id="categoryMenu">
+                <button class="category-btn active" data-category="all">All Units</button>
+                <button class="category-btn" data-category="2br-townhouses">2-Bedroom Townhouses</button>
+                <button class="category-btn" data-category="3br-townhouses">3-Bedroom Townhouses</button>
+                <button class="category-btn" data-category="3br-single-family">3-Bedroom Single-Family Houses</button>
+                <button class="category-btn" data-category="4br-single-family">4-Bedroom Single-Family Houses</button>
             </div>
             <div class="loading-indicator" id="loadingIndicator">
                 <span>Loading map data...</span>
@@ -24,30 +27,38 @@
         <div class="main-layout">
             <!-- Map Container -->
             <div class="map-container">
+                <div class="zoom-control zoom-control-desktop">
+                    <label for="zoomSliderDesktop">Zoom</label>
+                    <input type="range" id="zoomSliderDesktop" min="1" max="4" step="0.1" value="1">
+                </div>
                 <div id="mapWrapper" class="map-wrapper">
                     <!-- SVG will load here -->
                 </div>
+                <div class="zoom-control zoom-control-mobile">
+                    <label for="zoomSliderMobile">Zoom</label>
+                    <input type="range" id="zoomSliderMobile" min="1" max="4" step="0.1" value="1">
+                </div>
                 <div class="map-legend">
-                    <div class="legend-item">
+                    <button class="legend-item legend-button" data-status="available" type="button">
                         <div class="legend-color available"></div>
                         <span>Available <span class="legend-count">(0)</span></span>
-                    </div>
-                    <div class="legend-item">
+                    </button>
+                    <button class="legend-item legend-button" data-status="reserved" type="button">
                         <div class="legend-color reserved"></div>
                         <span>Reserved <span class="legend-count">(0)</span></span>
-                    </div>
-                    <div class="legend-item">
+                    </button>
+                    <button class="legend-item legend-button" data-status="prebooked" type="button">
                         <div class="legend-color prebooked"></div>
                         <span>Pre-Booked <span class="legend-count">(0)</span></span>
-                    </div>
-                    <div class="legend-item">
+                    </button>
+                    <button class="legend-item legend-button" data-status="sold" type="button">
                         <div class="legend-color sold"></div>
                         <span>Sold <span class="legend-count">(0)</span></span>
-                    </div>
-                    <div class="legend-item">
+                    </button>
+                    <button class="legend-item legend-button" data-status="unreleased" type="button">
                         <div class="legend-color unreleased"></div>
                         <span>Unreleased <span class="legend-count">(0)</span></span>
-                    </div>
+                    </button>
                 </div>
             </div>
 

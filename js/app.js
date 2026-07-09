@@ -2,9 +2,10 @@ let platMap;
 
 document.addEventListener('DOMContentLoaded', async function() {
     const loadingIndicator = document.getElementById('loadingIndicator');
-    const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearBtn');
-    const detailsPanel = document.getElementById('detailsContent');
+    const categoryButtons = document.querySelectorAll('.category-btn');
+    const legendButtons = document.querySelectorAll('.legend-button');
+    const zoomSliderDesktop = document.getElementById('zoomSliderDesktop');
+    const zoomSliderMobile = document.getElementById('zoomSliderMobile');
 
     // Initialize the map
     platMap = new PlatMap('mapWrapper', 'detailsContent');
@@ -28,25 +29,44 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadingIndicator.innerHTML = '<span style="color: red;">❌ Error loading map. Check console.</span>';
     }
 
-    // Search input handler
-    searchInput.addEventListener('input', function(e) {
-        const searchTerm = e.target.value;
-
-        if (searchTerm.trim()) {
-            clearBtn.style.display = 'block';
-        } else {
-            clearBtn.style.display = 'none';
-        }
-
-        platMap.filterLots(searchTerm);
+    // Category filter menu
+    categoryButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            categoryButtons.forEach((btn) => btn.classList.remove('active'));
+            button.classList.add('active');
+            platMap.setCategoryFilter(button.dataset.category);
+        });
     });
 
-    // Clear button handler
-    clearBtn.addEventListener('click', function() {
-        searchInput.value = '';
-        clearBtn.style.display = 'none';
-        platMap.clearSelection();
+    // Click legend item to focus status; click same item again to clear
+    legendButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const status = button.dataset.status;
+            const isActive = button.classList.contains('active');
+            legendButtons.forEach((btn) => btn.classList.remove('active'));
+            if (isActive) {
+                platMap.setStatusFilter(null);
+                return;
+            }
+            button.classList.add('active');
+            platMap.setStatusFilter(status);
+        });
     });
+
+    // Slider zoom (desktop + mobile)
+    const syncZoom = (value) => {
+        const zoom = Number(value);
+        if (zoomSliderDesktop) zoomSliderDesktop.value = zoom;
+        if (zoomSliderMobile) zoomSliderMobile.value = zoom;
+        platMap.setZoom(zoom);
+    };
+
+    if (zoomSliderDesktop) {
+        zoomSliderDesktop.addEventListener('input', (e) => syncZoom(e.target.value));
+    }
+    if (zoomSliderMobile) {
+        zoomSliderMobile.addEventListener('input', (e) => syncZoom(e.target.value));
+    }
 
     // Click outside map to deselect
     document.addEventListener('click', function(e) {
@@ -60,8 +80,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Keyboard shortcut: Escape to clear
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            searchInput.value = '';
-            clearBtn.style.display = 'none';
+            categoryButtons.forEach((btn) => btn.classList.remove('active'));
+            const allButton = document.querySelector('.category-btn[data-category="all"]');
+            if (allButton) allButton.classList.add('active');
+            legendButtons.forEach((btn) => btn.classList.remove('active'));
+            platMap.resetFilters();
             platMap.clearSelection();
         }
     });
@@ -96,4 +119,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log('Refreshing data from Google Sheet...');
         await platMap.refreshData();
     }, 300000);
+
+    // Set initial slider state from map layout
+    if (zoomSliderDesktop) zoomSliderDesktop.value = platMap.currentZoom;
+    if (zoomSliderMobile) zoomSliderMobile.value = platMap.currentZoom;
+
+    window.addEventListener('resize', () => {
+        if (zoomSliderDesktop) zoomSliderDesktop.value = platMap.currentZoom;
+        if (zoomSliderMobile) zoomSliderMobile.value = platMap.currentZoom;
+    });
 });

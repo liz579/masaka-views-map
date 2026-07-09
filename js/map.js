@@ -6,7 +6,13 @@ class PlatMap {
         this.selectedLot = null;
         this.searchTerm = '';
         this.svgElement = null;
+        this.lotElements = [];
+        this.activeStatusFilter = null;
+        this.activeCategoryFilter = 'all';
         this.baseViewBox = null;
+        this.currentZoom = 1;
+        this.minZoom = 1;
+        this.maxZoom = 4;
         this.pinchState = {
             active: false,
             startDistance: 0,
@@ -73,6 +79,31 @@ class PlatMap {
         return this.parseViewBox(this.svgElement.getAttribute('viewBox'));
     }
 
+    getViewBoxForZoom(zoom, anchorX = 0.5, anchorY = 0.5) {
+        if (!this.baseViewBox) return null;
+        const width = this.baseViewBox.width / zoom;
+        const height = this.baseViewBox.height / zoom;
+        const centerX = this.baseViewBox.x + (this.baseViewBox.width * anchorX);
+        const centerY = this.baseViewBox.y + (this.baseViewBox.height * anchorY);
+        const unclamped = {
+            x: centerX - (width / 2),
+            y: centerY - (height / 2),
+            width,
+            height
+        };
+        return this.clampViewBox(unclamped);
+    }
+
+    setZoom(zoom) {
+        if (!this.baseViewBox) return;
+        const clampedZoom = Math.min(this.maxZoom, Math.max(this.minZoom, Number(zoom) || 1));
+        this.currentZoom = clampedZoom;
+        const nextViewBox = this.getViewBoxForZoom(clampedZoom);
+        if (nextViewBox) {
+            this.setViewBox(nextViewBox);
+        }
+    }
+
     getTouchDistance(touchA, touchB) {
         const dx = touchB.clientX - touchA.clientX;
         const dy = touchB.clientY - touchA.clientY;
@@ -118,10 +149,8 @@ class PlatMap {
             this.mapContainer.removeEventListener('touchcancel', this.onTouchEnd);
         }
 
-        const minZoom = 1;
-        const maxZoom = 4;
-
         this.onTouchStart = (event) => {
+            if (window.matchMedia('(max-width: 640px)').matches) return;
             if (event.touches.length !== 2) return;
             const currentViewBox = this.getCurrentViewBox();
             if (!currentViewBox) return;
@@ -145,8 +174,8 @@ class PlatMap {
 
             const rawScale = this.pinchState.startDistance / distance;
             const nextWidth = this.pinchState.startViewBox.width * rawScale;
-            const minWidth = this.baseViewBox.width / maxZoom;
-            const maxWidth = this.baseViewBox.width / minZoom;
+            const minWidth = this.baseViewBox.width / this.maxZoom;
+            const maxWidth = this.baseViewBox.width / this.minZoom;
             const width = Math.min(Math.max(nextWidth, minWidth), maxWidth);
             const height = (width * this.baseViewBox.height) / this.baseViewBox.width;
 
@@ -162,7 +191,9 @@ class PlatMap {
                 height
             };
 
-            this.setViewBox(this.clampViewBox(unclamped));
+            const nextViewBox = this.clampViewBox(unclamped);
+            this.setViewBox(nextViewBox);
+            this.currentZoom = this.baseViewBox.width / nextViewBox.width;
             event.preventDefault();
         };
 
@@ -185,22 +216,9 @@ class PlatMap {
         if (!this.svgElement || !this.baseViewBox) return;
 
         const isMobile = window.matchMedia('(max-width: 640px)').matches;
-        this.setViewBox(this.baseViewBox);
+        this.currentZoom = isMobile ? 1.35 : 1;
+        this.setZoom(this.currentZoom);
         this.pinchState.active = false;
-
-        if (isMobile) {
-            this.svgElement.style.width = '170%';
-            this.svgElement.style.maxWidth = 'none';
-            this.svgElement.style.height = 'auto';
-
-            requestAnimationFrame(() => {
-                const overflowX = this.mapContainer.scrollWidth - this.mapContainer.clientWidth;
-                if (overflowX > 0) {
-                    this.mapContainer.scrollLeft = Math.round(overflowX / 2);
-                }
-            });
-            return;
-        }
 
         this.svgElement.style.width = '100%';
         this.svgElement.style.maxWidth = '100%';
@@ -301,8 +319,9 @@ class PlatMap {
 
         // Find all lot elements (any element with ID containing a hyphen)
         const lotElements = svg.querySelectorAll('[id*="-"]');
+        this.lotElements = Array.from(lotElements);
 
-        lotElements.forEach(element => {
+        this.lotElements.forEach(element => {
             const unitId = element.id;
             const lotData = this.lotsData[unitId];
 
@@ -360,6 +379,8 @@ class PlatMap {
                 });
             }
         });
+
+        this.applyCombinedFilters();
     }
 
     /**
@@ -479,40 +500,49 @@ class PlatMap {
         this.selectedLot = null;
         this.searchTerm = '';
         this.detailsPanel.innerHTML = '<p class="no-selection">👈 Click a lot to view details</p>';
-
-        // Show all lots
-        const allLots = this.mapContainer.querySelectorAll('svg .lot');
-        allLots.forEach(lot => {
-            lot.classList.remove('filtered-out');
-        });
     }
 
-    /**
-     * Filter lots by search term
-     */
-    filterLots(searchTerm) {
-        this.searchTerm = searchTerm.toLowerCase().trim();
+    resetFilters() {
+        this.activeCategoryFilter = 'all';
+        this.activeStatusFilter = null;
+        this.applyCombinedFilters();
+    }
 
-        const allLots = this.mapContainer.querySelectorAll('svg .lot');
+    getCategoryForUnit(unitId) {
+        if (unitId.startsWith('FH4-')) return '4br-single-family';
+        if (unitId.startsWith('FH3-')) return '3br-single-family';
+        if (unitId.startsWith('TSW-') || unitId.startsWith('TNW-')) return '3br-townhouses';
+        if (unitId.startsWith('TE-') || unitId.startsWith('TGA-') || unitId.startsWith('TGB-')) return '2br-townhouses';
+        return 'all';
+    }
 
-        if (!this.searchTerm) {
-            allLots.forEach(lot => lot.classList.remove('filtered-out'));
-            return;
-        }
+    setCategoryFilter(category) {
+        this.activeCategoryFilter = category || 'all';
+        this.applyCombinedFilters();
+    }
 
-        allLots.forEach(lot => {
-            const unitId = lot.dataset.unitId;
+    setStatusFilter(status) {
+        this.activeStatusFilter = status || null;
+        this.applyCombinedFilters();
+    }
+
+    applyCombinedFilters() {
+        if (!this.svgElement) return;
+
+        const hasStatusFocus = !!this.activeStatusFilter;
+        this.svgElement.classList.toggle('status-focus-on', hasStatusFocus);
+
+        this.lotElements.forEach(lot => {
+            const unitId = lot.dataset.unitId || lot.id;
             const lotData = this.lotsData[unitId];
+            if (!lotData) return;
 
-            if (lotData) {
-                const matches = 
-                    unitId.toLowerCase().includes(this.searchTerm) ||
-                    lotData.name.toLowerCase().includes(this.searchTerm);
+            const categoryMatch = this.activeCategoryFilter === 'all' || this.getCategoryForUnit(unitId) === this.activeCategoryFilter;
+            lot.classList.toggle('filtered-out', !categoryMatch);
 
-                lot.classList.toggle('filtered-out', !matches);
-            } else {
-                lot.classList.add('filtered-out');
-            }
+            const statusKey = lotData.status.toLowerCase().replace(/\s+/g, '');
+            const statusMatch = !hasStatusFocus || statusKey === this.activeStatusFilter;
+            lot.classList.toggle('status-focus-hit', statusMatch);
         });
     }
 
