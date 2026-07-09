@@ -550,11 +550,11 @@ svg .lot.status-unreleased {
     }
 
     .map-container {
-        min-height: 52dvh;
+        min-height: 31dvh;
     }
 
     .map-wrapper {
-        min-height: 44dvh;
+        min-height: 26dvh;
     }
 
     .zoom-control-desktop {
