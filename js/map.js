@@ -25,6 +25,7 @@ class PlatMap {
         this.dragState = {
             active: false,
             pointerId: null,
+            pointerType: null,
             lastX: 0,
             lastY: 0,
             moved: false,
@@ -266,6 +267,7 @@ class PlatMap {
             if (event.pointerType === 'mouse' && event.button !== 0) return;
             this.dragState.active = true;
             this.dragState.pointerId = event.pointerId;
+            this.dragState.pointerType = event.pointerType || 'mouse';
             this.dragState.lastX = event.clientX;
             this.dragState.lastY = event.clientY;
             this.dragState.moved = false;
@@ -287,7 +289,8 @@ class PlatMap {
             const dx = event.clientX - this.dragState.lastX;
             const dy = event.clientY - this.dragState.lastY;
 
-            if (Math.abs(dx) + Math.abs(dy) > 2) {
+            const moveThreshold = this.dragState.pointerType === 'touch' ? 8 : 3;
+            if (Math.abs(dx) + Math.abs(dy) > moveThreshold) {
                 this.dragState.moved = true;
             }
 
@@ -320,6 +323,7 @@ class PlatMap {
 
             this.dragState.active = false;
             this.dragState.pointerId = null;
+            this.dragState.pointerType = null;
             this.mapContainer.style.cursor = 'grab';
 
             if (this.dragState.moved) {
@@ -711,7 +715,12 @@ class PlatMap {
 
             const statusKey = lotData.status.toLowerCase().replace(/\s+/g, '');
             const statusMatch = statusKey === this.activeStatusFilter;
-            lot.classList.toggle('status-focus-hit', hasStatusFocus && statusMatch);
+            const hasCategoryFocus = this.activeCategoryFilter !== 'all';
+            let focusHit = false;
+            if (hasStatusFocus && hasCategoryFocus) focusHit = statusMatch && categoryMatch;
+            else if (hasStatusFocus) focusHit = statusMatch;
+            else if (hasCategoryFocus) focusHit = categoryMatch;
+            lot.classList.toggle('status-focus-hit', focusHit);
         });
     }
 
