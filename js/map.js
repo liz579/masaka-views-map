@@ -13,15 +13,27 @@ class PlatMap {
         this.currentZoom = 1;
         this.minZoom = 1;
         this.maxZoom = 4;
+        this.nonPropertyElements = [];
         this.pinchState = {
             active: false,
             startDistance: 0,
             startViewBox: null,
             startCenterSvg: null
         };
+        this.dragState = {
+            active: false,
+            pointerId: null,
+            lastX: 0,
+            lastY: 0,
+            moved: false,
+            suppressLotClick: false
+        };
         this.onTouchStart = null;
         this.onTouchMove = null;
         this.onTouchEnd = null;
+        this.onPointerDown = null;
+        this.onPointerMove = null;
+        this.onPointerUp = null;
         this.googleSheetUrl = 'https://script.google.com/macros/s/AKfycbwd_sSg5XZTFJOJLrFBR0Fq3Hj3lIcVek6fExuPwHOqfPlzIR5VxJd2ZxrXMhy3hQ/exec';
         window.addEventListener('resize', () => this.updateMobileMapLayout());
     }
@@ -37,6 +49,7 @@ class PlatMap {
             this.svgElement = this.mapContainer.querySelector('svg');
             this.initializeViewBox();
             this.initializePinchZoom();
+            this.initializePan();
             this.updateMobileMapLayout();
         } catch (error) {
             console.error('Error loading SVG:', error);
@@ -209,6 +222,94 @@ class PlatMap {
         this.mapContainer.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
     }
 
+    initializePan() {
+        if (!this.mapContainer || !this.svgElement) return;
+
+        if (this.onPointerDown) {
+            this.mapContainer.removeEventListener('pointerdown', this.onPointerDown);
+            this.mapContainer.removeEventListener('pointermove', this.onPointerMove);
+            this.mapContainer.removeEventListener('pointerup', this.onPointerUp);
+            this.mapContainer.removeEventListener('pointercancel', this.onPointerUp);
+            this.mapContainer.removeEventListener('pointerleave', this.onPointerUp);
+        }
+
+        this.onPointerDown = (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            this.dragState.active = true;
+            this.dragState.pointerId = event.pointerId;
+            this.dragState.lastX = event.clientX;
+            this.dragState.lastY = event.clientY;
+            this.dragState.moved = false;
+            this.mapContainer.style.cursor = 'grabbing';
+            if (this.mapContainer.setPointerCapture) {
+                this.mapContainer.setPointerCapture(event.pointerId);
+            }
+            event.preventDefault();
+        };
+
+        this.onPointerMove = (event) => {
+            if (!this.dragState.active || this.dragState.pointerId !== event.pointerId) return;
+
+            const currentViewBox = this.getCurrentViewBox();
+            if (!currentViewBox) return;
+
+            const rect = this.mapContainer.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+
+            const dx = event.clientX - this.dragState.lastX;
+            const dy = event.clientY - this.dragState.lastY;
+
+            if (Math.abs(dx) + Math.abs(dy) > 2) {
+                this.dragState.moved = true;
+            }
+
+            const unitXPerPixel = currentViewBox.width / rect.width;
+            const unitYPerPixel = currentViewBox.height / rect.height;
+
+            const nextViewBox = this.clampViewBox({
+                x: currentViewBox.x - (dx * unitXPerPixel),
+                y: currentViewBox.y - (dy * unitYPerPixel),
+                width: currentViewBox.width,
+                height: currentViewBox.height
+            });
+
+            this.setViewBox(nextViewBox);
+            this.dragState.lastX = event.clientX;
+            this.dragState.lastY = event.clientY;
+            event.preventDefault();
+        };
+
+        this.onPointerUp = (event) => {
+            if (!this.dragState.active) return;
+
+            if (this.mapContainer.releasePointerCapture && this.dragState.pointerId !== null) {
+                try {
+                    this.mapContainer.releasePointerCapture(this.dragState.pointerId);
+                } catch (e) {
+                    // ignore capture release errors from ended pointers
+                }
+            }
+
+            this.dragState.active = false;
+            this.dragState.pointerId = null;
+            this.mapContainer.style.cursor = 'grab';
+
+            if (this.dragState.moved) {
+                this.dragState.suppressLotClick = true;
+                setTimeout(() => {
+                    this.dragState.suppressLotClick = false;
+                }, 120);
+            }
+        };
+
+        this.mapContainer.addEventListener('pointerdown', this.onPointerDown, { passive: false });
+        this.mapContainer.addEventListener('pointermove', this.onPointerMove, { passive: false });
+        this.mapContainer.addEventListener('pointerup', this.onPointerUp, { passive: true });
+        this.mapContainer.addEventListener('pointercancel', this.onPointerUp, { passive: true });
+        this.mapContainer.addEventListener('pointerleave', this.onPointerUp, { passive: true });
+        this.mapContainer.style.cursor = 'grab';
+    }
+
     /**
      * Make mobile map start larger and remain visible after orientation changes
      */
@@ -333,6 +434,10 @@ class PlatMap {
 
                 // Add click listener
                 element.addEventListener('click', (e) => {
+                    if (this.dragState.suppressLotClick) {
+                        e.preventDefault();
+                        return;
+                    }
                     e.stopPropagation();
                     this.selectLot(unitId);
                 });
@@ -378,6 +483,13 @@ class PlatMap {
                     tooltip.style.display = 'none';
                 });
             }
+        });
+
+        this.nonPropertyElements = Array.from(
+            svg.querySelectorAll('polygon,path,polyline,rect,circle,ellipse,line,text,image')
+        ).filter((element) => !element.classList.contains('lot'));
+        this.nonPropertyElements.forEach((element) => {
+            element.classList.add('non-property-element');
         });
 
         this.applyCombinedFilters();
@@ -531,6 +643,9 @@ class PlatMap {
 
         const hasStatusFocus = !!this.activeStatusFilter;
         this.svgElement.classList.toggle('status-focus-on', hasStatusFocus);
+        this.nonPropertyElements.forEach((element) => {
+            element.classList.toggle('non-property-muted', hasStatusFocus);
+        });
 
         this.lotElements.forEach(lot => {
             const unitId = lot.dataset.unitId || lot.id;
