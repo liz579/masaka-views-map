@@ -10,6 +10,7 @@ class PlatMap {
         this.activeStatusFilter = null;
         this.activeCategoryFilter = 'all';
         this.unitCategoryMap = {};
+        this.unitCategoryOverrides = this.buildUnitCategoryOverrides();
         this.baseViewBox = null;
         this.currentZoom = 1;
         this.minZoom = 1;
@@ -37,6 +38,33 @@ class PlatMap {
         this.onPointerUp = null;
         this.googleSheetUrl = 'https://script.google.com/macros/s/AKfycbwd_sSg5XZTFJOJLrFBR0Fq3Hj3lIcVek6fExuPwHOqfPlzIR5VxJd2ZxrXMhy3hQ/exec';
         window.addEventListener('resize', () => this.updateMobileMapLayout());
+    }
+
+    buildUnitCategoryOverrides() {
+        const overrides = {};
+
+        for (let i = 1; i <= 10; i++) overrides[`FH4-${i}`] = '4br-single-family';
+        for (let i = 1; i <= 25; i++) overrides[`FH3-${i}`] = '3br-single-family';
+        for (let i = 1; i <= 12; i++) {
+            overrides[`TNW-${i}`] = '3br-townhouses';
+            overrides[`TSW-${i}`] = '3br-townhouses';
+        }
+
+        const threeBedTownhouses = [
+            'TE-1', 'TE-6', 'TE-9',
+            'TGA-1', 'TGA-4', 'TGA-9', 'TGA-12',
+            'TGB-1', 'TGB-4', 'TGB-9', 'TGB-12'
+        ];
+        const twoBedTownhouses = [
+            'TE-2', 'TE-3', 'TE-4', 'TE-5', 'TE-7', 'TE-8',
+            'TGA-2', 'TGA-3', 'TGA-5', 'TGA-6', 'TGA-7', 'TGA-8', 'TGA-10', 'TGA-11',
+            'TGB-2', 'TGB-3', 'TGB-5', 'TGB-6', 'TGB-7', 'TGB-8', 'TGB-10', 'TGB-11'
+        ];
+
+        threeBedTownhouses.forEach((unitId) => { overrides[unitId] = '3br-townhouses'; });
+        twoBedTownhouses.forEach((unitId) => { overrides[unitId] = '2br-townhouses'; });
+
+        return overrides;
     }
 
     /**
@@ -639,6 +667,9 @@ class PlatMap {
     }
 
     getCategoryForUnit(unitId) {
+        const overriddenCategory = this.unitCategoryOverrides[unitId];
+        if (overriddenCategory) return overriddenCategory;
+
         const groupedCategory = this.unitCategoryMap[unitId];
         if (groupedCategory) return groupedCategory;
 
