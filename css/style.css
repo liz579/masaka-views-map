@@ -101,6 +101,10 @@ body {
     display: none;
 }
 
+.loading-indicator.loading-flash {
+    animation: loadingPulseText 0.9s ease-in-out infinite;
+}
+
 .main-layout {
     display: flex;
     gap: 10px;
@@ -167,6 +171,14 @@ body {
     width: 100%;
     height: auto;
     display: block;
+}
+
+.map-wrapper.loading-flash {
+    animation: loadingPulseMap 1s ease-in-out infinite;
+}
+
+.map-wrapper.loading-flash svg {
+    opacity: 0.55;
 }
 
 .map-compass {
@@ -466,6 +478,16 @@ svg .lot.status-unreleased {
 .book-btn:active {
     transform: translateY(0);
     box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
+}
+
+@keyframes loadingPulseText {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+@keyframes loadingPulseMap {
+    0%, 100% { background-color: #f9f9f9; }
+    50% { background-color: #eef4fb; }
 }
 
 /* Mobile Responsive */

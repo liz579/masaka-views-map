@@ -2,6 +2,7 @@ let platMap;
 
 document.addEventListener('DOMContentLoaded', async function() {
     const loadingIndicator = document.getElementById('loadingIndicator');
+    const mapWrapper = document.getElementById('mapWrapper');
     const categoryButtons = document.querySelectorAll('.category-btn');
     const legendButtons = document.querySelectorAll('.legend-button');
     const zoomSliderDesktop = document.getElementById('zoomSliderDesktop');
@@ -13,6 +14,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         // Show loading indicator
         loadingIndicator.classList.remove('hidden');
+        loadingIndicator.classList.add('loading-flash');
+        if (mapWrapper) mapWrapper.classList.add('loading-flash');
 
         // Load SVG map
         await platMap.loadSVG('svg/map.svg');
@@ -22,11 +25,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Hide loading indicator
         loadingIndicator.classList.add('hidden');
+        loadingIndicator.classList.remove('loading-flash');
+        if (mapWrapper) mapWrapper.classList.remove('loading-flash');
 
         console.log('Map initialized successfully');
     } catch (error) {
         console.error('Error initializing map:', error);
         loadingIndicator.innerHTML = '<span style="color: red;">❌ Error loading map. Check console.</span>';
+        loadingIndicator.classList.remove('loading-flash');
+        if (mapWrapper) mapWrapper.classList.remove('loading-flash');
     }
 
     // Category filter menu

@@ -288,11 +288,7 @@ class PlatMap {
 
             const dx = event.clientX - this.dragState.lastX;
             const dy = event.clientY - this.dragState.lastY;
-
-            const moveThreshold = this.dragState.pointerType === 'touch' ? 8 : 3;
-            if (Math.abs(dx) + Math.abs(dy) > moveThreshold) {
-                this.dragState.moved = true;
-            }
+            const moveThreshold = this.dragState.pointerType === 'touch' ? 14 : 4;
 
             const unitXPerPixel = currentViewBox.width / rect.width;
             const unitYPerPixel = currentViewBox.height / rect.height;
@@ -303,6 +299,14 @@ class PlatMap {
                 width: currentViewBox.width,
                 height: currentViewBox.height
             });
+
+            const viewBoxChanged =
+                Math.abs(nextViewBox.x - currentViewBox.x) > 0.001 ||
+                Math.abs(nextViewBox.y - currentViewBox.y) > 0.001;
+
+            if (viewBoxChanged && (Math.abs(dx) + Math.abs(dy) > moveThreshold)) {
+                this.dragState.moved = true;
+            }
 
             this.setViewBox(nextViewBox);
             this.dragState.lastX = event.clientX;
@@ -325,6 +329,13 @@ class PlatMap {
             this.dragState.pointerId = null;
             this.dragState.pointerType = null;
             this.mapContainer.style.cursor = 'grab';
+
+            const lotTarget = event.target && event.target.closest ? event.target.closest('.lot[data-unit-id]') : null;
+            if (!this.dragState.moved && lotTarget) {
+                this.selectLot(lotTarget.dataset.unitId);
+                this.dragState.suppressLotClick = false;
+                return;
+            }
 
             if (this.dragState.moved) {
                 this.dragState.suppressLotClick = true;
