@@ -9,6 +9,7 @@ class PlatMap {
         this.lotElements = [];
         this.activeStatusFilter = null;
         this.activeCategoryFilter = 'all';
+        this.unitCategoryMap = {};
         this.baseViewBox = null;
         this.currentZoom = 1;
         this.minZoom = 1;
@@ -421,6 +422,7 @@ class PlatMap {
         // Find all lot elements (any element with ID containing a hyphen)
         const lotElements = svg.querySelectorAll('[id*="-"]');
         this.lotElements = Array.from(lotElements);
+        this.unitCategoryMap = {};
 
         this.lotElements.forEach(element => {
             const unitId = element.id;
@@ -431,6 +433,7 @@ class PlatMap {
                 const statusClass = `status-${lotData.status.toLowerCase().replace(/\s+/g, '-')}`;
                 element.classList.add('lot', statusClass);
                 element.dataset.unitId = unitId;
+                this.unitCategoryMap[unitId] = this.detectCategoryFromLayerGroup(element);
 
                 // Add click listener
                 element.addEventListener('click', (e) => {
@@ -493,6 +496,21 @@ class PlatMap {
         });
 
         this.applyCombinedFilters();
+    }
+
+    detectCategoryFromLayerGroup(element) {
+        const interactiveRoot = this.svgElement ? this.svgElement.querySelector('#Interactive_Lots') : null;
+        let node = element;
+        while (node && node !== interactiveRoot) {
+            if (node.tagName && node.tagName.toLowerCase() === 'g' && node.id) {
+                if (node.id.includes('_2BR_Townhouses')) return '2br-townhouses';
+                if (node.id.includes('_3BR_Townhouses')) return '3br-townhouses';
+                if (node.id.includes('_3BR_Single_Family_Homes')) return '3br-single-family';
+                if (node.id.includes('_4BR_Single_Family_Homes')) return '4br-single-family';
+            }
+            node = node.parentElement;
+        }
+        return null;
     }
 
     /**
@@ -621,6 +639,10 @@ class PlatMap {
     }
 
     getCategoryForUnit(unitId) {
+        const groupedCategory = this.unitCategoryMap[unitId];
+        if (groupedCategory) return groupedCategory;
+
+        // Fallback for legacy SVGs that may not have expected group ids
         if (unitId.startsWith('FH4-')) return '4br-single-family';
         if (unitId.startsWith('FH3-')) return '3br-single-family';
         if (unitId.startsWith('TSW-') || unitId.startsWith('TNW-')) return '3br-townhouses';
@@ -642,9 +664,11 @@ class PlatMap {
         if (!this.svgElement) return;
 
         const hasStatusFocus = !!this.activeStatusFilter;
-        this.svgElement.classList.toggle('status-focus-on', hasStatusFocus);
+        const hasCategoryFocus = this.activeCategoryFilter !== 'all';
+        const hasFocus = hasStatusFocus || hasCategoryFocus;
+        this.svgElement.classList.toggle('status-focus-on', hasFocus);
         this.nonPropertyElements.forEach((element) => {
-            element.classList.toggle('non-property-muted', hasStatusFocus);
+            element.classList.toggle('non-property-muted', hasFocus);
         });
 
         this.lotElements.forEach(lot => {
