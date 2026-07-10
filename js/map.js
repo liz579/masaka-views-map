@@ -450,6 +450,8 @@ class PlatMap {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
                 max-width: 150px;
                 text-align: center;
+                border-radius: 8px;
+                overflow: visible;
             `;
             document.body.appendChild(tooltip);
         }
@@ -500,17 +502,27 @@ class PlatMap {
                         <div style="font-weight: bold; margin-bottom: 6px; color: #333;">${unitId}</div>
                         <div style="font-size: 11px; margin-bottom: 6px; color: #333;">${lotData.name}</div>
                         <div style="display: inline-block; background-color: ${bgColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">${lotData.status}</div>
+                        <div style="position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 18px solid #333;"></div>
+                        <div style="position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 16px solid #f5f5f5;"></div>
                     `;
                     tooltip.style.display = 'block';
                     
-                    // Position tooltip above with arrow pointing down
+                    // Position tooltip above lot with extra gap and viewport clamping
                     const rect = element.getBoundingClientRect();
-                    const tooltipWidth = 150;
-                    tooltip.style.left = (rect.left + rect.width / 2 - tooltipWidth / 2) + 'px';
-                    tooltip.style.top = (rect.top - 70) + 'px';
-                    
-                    // Add arrow/pointer using clip-path
-                    tooltip.style.clipPath = 'polygon(0 0, 100% 0, 100% calc(100% - 8px), 52% calc(100% - 8px), 50% 100%, 48% calc(100% - 8px), 0 calc(100% - 8px))';
+                    const tooltipWidth = tooltip.offsetWidth;
+                    const tooltipHeight = tooltip.offsetHeight;
+                    const horizontalPadding = 8;
+                    const bubbleGap = 22;
+                    const desiredLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+                    const clampedLeft = Math.max(
+                        horizontalPadding,
+                        Math.min(desiredLeft, window.innerWidth - tooltipWidth - horizontalPadding)
+                    );
+                    const desiredTop = rect.top - tooltipHeight - bubbleGap;
+                    const clampedTop = Math.max(8, desiredTop);
+
+                    tooltip.style.left = `${clampedLeft}px`;
+                    tooltip.style.top = `${clampedTop}px`;
                 });
 
                 element.addEventListener('mouseleave', (e) => {
