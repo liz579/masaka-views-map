@@ -123,6 +123,56 @@ class PlatMap {
         return '';
     }
 
+    findTopWidthCenterX(element, bbox, y) {
+        if (typeof element.isPointInFill !== 'function') {
+            return bbox.x + (bbox.width / 2);
+        }
+
+        const scanStep = Math.max(1, Math.round(bbox.width / 80));
+        let minX = Infinity;
+        let maxX = -Infinity;
+
+        for (let x = bbox.x; x <= bbox.x + bbox.width; x += scanStep) {
+            const point = new DOMPoint(x, y);
+            if (element.isPointInFill(point)) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+            }
+        }
+
+        if (minX === Infinity || maxX === -Infinity) {
+            return bbox.x + (bbox.width / 2);
+        }
+
+        return (minX + maxX) / 2;
+    }
+
+    getConstructionDotPosition(element, dotRadius) {
+        const bbox = element.getBBox();
+        if (!bbox || bbox.width <= 0 || bbox.height <= 0) return null;
+
+        const minY = bbox.y + dotRadius + 2;
+        const maxY = bbox.y + bbox.height - dotRadius - 2;
+        if (minY > maxY) return null;
+
+        const initialY = Math.max(minY, Math.min(bbox.y + (bbox.height * 0.14), maxY));
+        const yStep = Math.max(1, dotRadius * 0.5);
+        const attempts = 8;
+
+        for (let i = 0; i < attempts; i++) {
+            const y = Math.min(maxY, initialY + (i * yStep));
+            const cx = this.findTopWidthCenterX(element, bbox, y);
+            if (Number.isFinite(cx)) {
+                return { cx, cy: y };
+            }
+        }
+
+        return {
+            cx: bbox.x + (bbox.width / 2),
+            cy: initialY
+        };
+    }
+
     /**
      * Fetch and embed SVG map
      */
@@ -527,17 +577,14 @@ class PlatMap {
                 this.unitCategoryMap[unitId] = this.detectCategoryFromLayerGroup(element);
                 const dotFill = this.getConstructionDotFill(lotData.constructionStatus);
                 if (dotFill) {
-                    const bbox = element.getBBox();
-                    if (bbox.width > 0 && bbox.height > 0) {
-                        const dotRadius = 8;
-                        const cx = bbox.x + (bbox.width / 2);
-                        const topOffset = Math.max(dotRadius + 2, Math.min(bbox.height * 0.2, bbox.height - dotRadius - 2));
-                        const cy = bbox.y + topOffset;
+                    const dotRadius = 7.2;
+                    const dotPosition = this.getConstructionDotPosition(element, dotRadius);
+                    if (dotPosition) {
                         const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                         marker.classList.add('construction-dot');
                         marker.dataset.unitId = unitId;
-                        marker.setAttribute('cx', String(cx));
-                        marker.setAttribute('cy', String(cy));
+                        marker.setAttribute('cx', String(dotPosition.cx));
+                        marker.setAttribute('cy', String(dotPosition.cy));
                         marker.setAttribute('r', String(dotRadius));
                         marker.setAttribute('fill', dotFill);
                         marker.setAttribute('stroke', '#8f8f8f');
