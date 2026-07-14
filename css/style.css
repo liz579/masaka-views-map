@@ -294,26 +294,6 @@ body {
     font-weight: normal;
 }
 
-.legend-construction-item {
-    padding: 6px 2px;
-}
-
-.legend-construction-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid #8f8f8f;
-    display: inline-block;
-}
-
-.legend-construction-dot.under-construction {
-    background: #ffd400;
-}
-
-.legend-construction-dot.completed {
-    background: #2f54ff;
-}
-
 .details-panel {
     width: 300px;
     background: white;
@@ -571,25 +551,6 @@ svg .lot.status-sold {
 svg .lot.status-unreleased {
     fill: #bdc3c7;
     cursor: not-allowed;
-}
-
-svg .construction-dot {
-    opacity: 1;
-    transition: opacity 0.2s ease, filter 0.2s ease;
-}
-
-svg .construction-dot.filtered-out {
-    opacity: 0.15;
-}
-
-svg.status-focus-on .construction-dot {
-    opacity: 0.18;
-    filter: saturate(0.5) brightness(1.05);
-}
-
-svg.status-focus-on .construction-dot.status-focus-hit {
-    opacity: 1;
-    filter: brightness(1.02);
 }
 
 /* Book Button Styling */
