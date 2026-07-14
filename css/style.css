@@ -553,6 +553,25 @@ svg .lot.status-unreleased {
     cursor: not-allowed;
 }
 
+svg .construction-dot {
+    opacity: 1;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+svg .construction-dot.filtered-out {
+    opacity: 0.15;
+}
+
+svg.status-focus-on .construction-dot {
+    opacity: 0.18;
+    filter: saturate(0.5) brightness(1.05);
+}
+
+svg.status-focus-on .construction-dot.status-focus-hit {
+    opacity: 1;
+    filter: brightness(1.02);
+}
+
 /* Book Button Styling */
 .book-btn {
     width: 100%;

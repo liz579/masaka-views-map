@@ -16,6 +16,7 @@ class PlatMap {
         this.minZoom = 1;
         this.maxZoom = 4;
         this.nonPropertyElements = [];
+        this.constructionDotsByUnit = {};
         this.pinchState = {
             active: false,
             startDistance: 0,
@@ -107,6 +108,19 @@ class PlatMap {
         if (parkingSpaces) features.push(parkingSpaces);
 
         return features;
+    }
+
+    normalizeConstructionStatus(value) {
+        const normalized = String(value || '').trim().toLowerCase();
+        if (normalized === 'under construction') return 'under-construction';
+        if (normalized === 'completed') return 'completed';
+        return 'none';
+    }
+
+    getConstructionDotFill(status) {
+        if (status === 'under-construction') return '#ffd400';
+        if (status === 'completed') return '#2f54ff';
+        return '';
     }
 
     /**
@@ -440,6 +454,9 @@ class PlatMap {
                     bedrooms: this.getFirstFilledValue(lot, ['Bedrooms', 'Bedroom', 'Beds']),
                     bathrooms: this.getFirstFilledValue(lot, ['Bathrooms', 'Bathroom', 'Baths']),
                     parkingSpaces: this.getFirstFilledValue(lot, ['Parking Spaces', 'ParkingSpaces', 'Parking', 'Cars']),
+                    constructionStatus: this.normalizeConstructionStatus(
+                        this.getFirstFilledValue(lot, ['Construction Status', 'ConstructionStatus'])
+                    ),
                     coordinates: this.parseCoordinates(lot.Coordinates)
                 };
             }
@@ -491,6 +508,12 @@ class PlatMap {
         const lotElements = svg.querySelectorAll('[id*="-"]');
         this.lotElements = Array.from(lotElements);
         this.unitCategoryMap = {};
+        this.constructionDotsByUnit = {};
+        const existingDotsLayer = svg.querySelector('#constructionStatusDots');
+        if (existingDotsLayer) existingDotsLayer.remove();
+        const constructionDotsLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        constructionDotsLayer.id = 'constructionStatusDots';
+        svg.appendChild(constructionDotsLayer);
 
         this.lotElements.forEach(element => {
             const unitId = element.id;
@@ -502,6 +525,28 @@ class PlatMap {
                 element.classList.add('lot', statusClass);
                 element.dataset.unitId = unitId;
                 this.unitCategoryMap[unitId] = this.detectCategoryFromLayerGroup(element);
+                const dotFill = this.getConstructionDotFill(lotData.constructionStatus);
+                if (dotFill) {
+                    const bbox = element.getBBox();
+                    if (bbox.width > 0 && bbox.height > 0) {
+                        const dotRadius = 8;
+                        const cx = bbox.x + (bbox.width / 2);
+                        const topOffset = Math.max(dotRadius + 2, Math.min(bbox.height * 0.2, bbox.height - dotRadius - 2));
+                        const cy = bbox.y + topOffset;
+                        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        marker.classList.add('construction-dot');
+                        marker.dataset.unitId = unitId;
+                        marker.setAttribute('cx', String(cx));
+                        marker.setAttribute('cy', String(cy));
+                        marker.setAttribute('r', String(dotRadius));
+                        marker.setAttribute('fill', dotFill);
+                        marker.setAttribute('stroke', '#8f8f8f');
+                        marker.setAttribute('stroke-width', '2');
+                        marker.setAttribute('pointer-events', 'none');
+                        constructionDotsLayer.appendChild(marker);
+                        this.constructionDotsByUnit[unitId] = marker;
+                    }
+                }
 
                 // Add click listener
                 element.addEventListener('click', (e) => {
@@ -572,7 +617,7 @@ class PlatMap {
 
         this.nonPropertyElements = Array.from(
             svg.querySelectorAll('polygon,path,polyline,rect,circle,ellipse,line,text,image')
-        ).filter((element) => !element.classList.contains('lot'));
+        ).filter((element) => !element.classList.contains('lot') && !element.classList.contains('construction-dot'));
         this.nonPropertyElements.forEach((element) => {
             element.classList.add('non-property-element');
         });
@@ -772,6 +817,12 @@ class PlatMap {
             else if (hasStatusFocus) focusHit = statusMatch;
             else if (hasCategoryFocus) focusHit = categoryMatch;
             lot.classList.toggle('status-focus-hit', focusHit);
+
+            const constructionDot = this.constructionDotsByUnit[unitId];
+            if (constructionDot) {
+                constructionDot.classList.toggle('filtered-out', !categoryMatch);
+                constructionDot.classList.toggle('status-focus-hit', focusHit);
+            }
         });
     }
 
