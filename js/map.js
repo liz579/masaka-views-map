@@ -123,30 +123,6 @@ class PlatMap {
         return '';
     }
 
-    findTopWidthCenterX(element, bbox, y) {
-        if (typeof element.isPointInFill !== 'function') {
-            return bbox.x + (bbox.width / 2);
-        }
-
-        const scanStep = Math.max(1, Math.round(bbox.width / 80));
-        let minX = Infinity;
-        let maxX = -Infinity;
-
-        for (let x = bbox.x; x <= bbox.x + bbox.width; x += scanStep) {
-            const point = new DOMPoint(x, y);
-            if (element.isPointInFill(point)) {
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-            }
-        }
-
-        if (minX === Infinity || maxX === -Infinity) {
-            return bbox.x + (bbox.width / 2);
-        }
-
-        return (minX + maxX) / 2;
-    }
-
     getConstructionDotPosition(element, dotRadius) {
         const bbox = element.getBBox();
         if (!bbox || bbox.width <= 0 || bbox.height <= 0) return null;
@@ -155,21 +131,10 @@ class PlatMap {
         const maxY = bbox.y + bbox.height - dotRadius - 2;
         if (minY > maxY) return null;
 
-        const targetY = Math.max(minY, Math.min(bbox.y + (bbox.height * 0.125), maxY));
-        const yStep = Math.max(1, dotRadius * 0.4);
-        const attempts = 6;
-
-        for (let i = 0; i < attempts; i++) {
-            const y = i === 0 ? targetY : Math.min(maxY, targetY + (i * yStep));
-            const cx = this.findTopWidthCenterX(element, bbox, y);
-            if (Number.isFinite(cx)) {
-                return { cx, cy: y };
-            }
-        }
-
+        const centerY = Math.max(minY, Math.min(bbox.y + (bbox.height / 2), maxY));
         return {
             cx: bbox.x + (bbox.width / 2),
-            cy: targetY
+            cy: centerY
         };
     }
 
