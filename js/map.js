@@ -155,12 +155,12 @@ class PlatMap {
         const maxY = bbox.y + bbox.height - dotRadius - 2;
         if (minY > maxY) return null;
 
-        const initialY = Math.max(minY, Math.min(bbox.y + (bbox.height * 0.14), maxY));
-        const yStep = Math.max(1, dotRadius * 0.5);
-        const attempts = 8;
+        const targetY = Math.max(minY, Math.min(bbox.y + (bbox.height * 0.125), maxY));
+        const yStep = Math.max(1, dotRadius * 0.4);
+        const attempts = 6;
 
         for (let i = 0; i < attempts; i++) {
-            const y = Math.min(maxY, initialY + (i * yStep));
+            const y = i === 0 ? targetY : Math.min(maxY, targetY + (i * yStep));
             const cx = this.findTopWidthCenterX(element, bbox, y);
             if (Number.isFinite(cx)) {
                 return { cx, cy: y };
@@ -169,7 +169,7 @@ class PlatMap {
 
         return {
             cx: bbox.x + (bbox.width / 2),
-            cy: initialY
+            cy: targetY
         };
     }
 
@@ -577,7 +577,7 @@ class PlatMap {
                 this.unitCategoryMap[unitId] = this.detectCategoryFromLayerGroup(element);
                 const dotFill = this.getConstructionDotFill(lotData.constructionStatus);
                 if (dotFill) {
-                    const dotRadius = 7.2;
+                    const dotRadius = 6.48;
                     const dotPosition = this.getConstructionDotPosition(element, dotRadius);
                     if (dotPosition) {
                         const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
