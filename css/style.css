@@ -294,6 +294,26 @@ body {
     font-weight: normal;
 }
 
+.legend-construction-item {
+    padding: 6px 2px;
+}
+
+.legend-construction-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #8f8f8f;
+    display: inline-block;
+}
+
+.legend-construction-dot.under-construction {
+    background: #ffd400;
+}
+
+.legend-construction-dot.completed {
+    background: #2f54ff;
+}
+
 .details-panel {
     width: 300px;
     background: white;
