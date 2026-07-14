@@ -411,15 +411,104 @@ svg .lot {
 }
 
 svg .lot:hover {
-    stroke: #2c3e50;
-    stroke-width: 2;
-    filter: brightness(0.9);
+    filter: brightness(1.12) saturate(1.02);
 }
 
 svg .lot.selected {
     stroke: #2c3e50;
     stroke-width: 3;
     filter: brightness(1.15);
+}
+
+.lot-tooltip {
+    max-width: 250px;
+    color: #fff;
+    background: #434343;
+    border: 1px solid #000;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    font-family: Arial, "Helvetica Neue", sans-serif;
+}
+
+.lot-tooltip::before,
+.lot-tooltip::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+}
+
+.lot-tooltip::before {
+    bottom: -19px;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 19px solid #000;
+}
+
+.lot-tooltip::after {
+    bottom: -17px;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 17px solid #434343;
+}
+
+.lot-tooltip-main {
+    padding: 12px 14px 10px;
+}
+
+.lot-tooltip-title {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 8px;
+}
+
+.lot-tooltip-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.lot-tooltip-name {
+    font-size: 13px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.lot-tooltip-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 14px 12px;
+    background: #5a5a5a;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0 0 9px 9px;
+}
+
+.lot-tooltip-feature {
+    display: inline-flex;
+    align-items: center;
+    background: #ececec;
+    color: #2f2f2f;
+    border: 1px solid #000;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.15;
 }
 
 svg .lot.filtered-out {

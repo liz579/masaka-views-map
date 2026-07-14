@@ -69,6 +69,46 @@ class PlatMap {
         return overrides;
     }
 
+    hasDisplayValue(value) {
+        return value !== undefined && value !== null && String(value).trim() !== '';
+    }
+
+    getFirstFilledValue(source, keys) {
+        for (const key of keys) {
+            if (Object.prototype.hasOwnProperty.call(source, key) && this.hasDisplayValue(source[key])) {
+                return String(source[key]).trim();
+            }
+        }
+
+        return '';
+    }
+
+    formatTooltipFeatureValue(value, suffix, existingPattern) {
+        if (!this.hasDisplayValue(value)) return '';
+
+        const text = String(value).trim();
+        if (existingPattern.test(text)) {
+            return text;
+        }
+
+        return `${text} ${suffix}`;
+    }
+
+    buildTooltipFeatures(lotData) {
+        const features = [];
+        const plotSize = this.formatTooltipFeatureValue(lotData.plotSize, 'Sqm', /sq\.?\s*m/i);
+        const bedrooms = this.formatTooltipFeatureValue(lotData.bedrooms, 'Beds', /bed/i);
+        const bathrooms = this.formatTooltipFeatureValue(lotData.bathrooms, 'Baths', /bath/i);
+        const parkingSpaces = this.formatTooltipFeatureValue(lotData.parkingSpaces, 'Cars', /car/i);
+
+        if (plotSize) features.push(plotSize);
+        if (bedrooms) features.push(bedrooms);
+        if (bathrooms) features.push(bathrooms);
+        if (parkingSpaces) features.push(parkingSpaces);
+
+        return features;
+    }
+
     /**
      * Fetch and embed SVG map
      */
@@ -393,10 +433,13 @@ class PlatMap {
                     name: lot.Name || '',
                     description: lot.Description || '',
                     imageUrl: lot.ImageURL || '',
-                    plotSize: lot.PlotSize || '',
+                    plotSize: this.getFirstFilledValue(lot, ['PlotSize', 'Plot Size']),
                     preBooked: lot.PreBooked || '',
                     status: lot.Status || 'Unreleased',
                     price: lot.Price || '',
+                    bedrooms: this.getFirstFilledValue(lot, ['Bedrooms', 'Bedroom', 'Beds']),
+                    bathrooms: this.getFirstFilledValue(lot, ['Bathrooms', 'Bathroom', 'Baths']),
+                    parkingSpaces: this.getFirstFilledValue(lot, ['Parking Spaces', 'ParkingSpaces', 'Parking', 'Cars']),
                     coordinates: this.parseCoordinates(lot.Coordinates)
                 };
             }
@@ -434,24 +477,12 @@ class PlatMap {
         if (!tooltip) {
             tooltip = document.createElement('div');
             tooltip.id = 'lotTooltip';
+            tooltip.className = 'lot-tooltip';
             tooltip.style.cssText = `
                 position: fixed;
-                background: #f5f5f5;
-                color: #333;
-                padding: 10px 12px;
-                border: 1px solid #333;
-                border-radius: 6px;
-                font-size: 12px;
-                font-weight: bold;
                 pointer-events: none;
                 z-index: 1000;
                 display: none;
-                white-space: normal;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-                max-width: 150px;
-                text-align: center;
-                border-radius: 8px;
-                overflow: visible;
             `;
             document.body.appendChild(tooltip);
         }
@@ -483,9 +514,7 @@ class PlatMap {
                 });
 
                 // Add hover effect with tooltip
-                element.addEventListener('mouseenter', (e) => {
-                    element.style.filter = 'brightness(0.85) drop-shadow(0 0 5px rgba(0,0,0,0.3))';
-                    
+                element.addEventListener('mouseenter', () => {
                     // Determine status color
                     const statusColor = {
                         'available': '#2ecc71',
@@ -496,14 +525,23 @@ class PlatMap {
                     };
                     const statusLower = lotData.status.toLowerCase().replace(/\s+/g, '');
                     const bgColor = statusColor[statusLower] || '#95a5a6';
+                    const tooltipFeatures = this.buildTooltipFeatures(lotData);
+                    const featuresSection = tooltipFeatures.length > 0
+                        ? `
+                            <div class="lot-tooltip-features">
+                                ${tooltipFeatures.map((feature) => `<span class="lot-tooltip-feature">${feature}</span>`).join('')}
+                            </div>
+                        `
+                        : '';
                     
                     // Show tooltip with status in colored badge
                     tooltip.innerHTML = `
-                        <div style="font-weight: bold; margin-bottom: 6px; color: #333;">${unitId}</div>
-                        <div style="font-size: 11px; margin-bottom: 6px; color: #333;">${lotData.name}</div>
-                        <div style="display: inline-block; background-color: ${bgColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">${lotData.status}</div>
-                        <div style="position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 18px solid #333;"></div>
-                        <div style="position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 16px solid #f5f5f5;"></div>
+                        <div class="lot-tooltip-main">
+                            <div class="lot-tooltip-title">${unitId}</div>
+                            <div class="lot-tooltip-status" style="background-color: ${bgColor};">${lotData.status}</div>
+                            <div class="lot-tooltip-name">${lotData.name}</div>
+                        </div>
+                        ${featuresSection}
                     `;
                     tooltip.style.display = 'block';
                     
@@ -525,10 +563,7 @@ class PlatMap {
                     tooltip.style.top = `${clampedTop}px`;
                 });
 
-                element.addEventListener('mouseleave', (e) => {
-                    if (this.selectedLot !== unitId) {
-                        element.style.filter = 'none';
-                    }
+                element.addEventListener('mouseleave', () => {
                     // Hide tooltip
                     tooltip.style.display = 'none';
                 });
