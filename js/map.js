@@ -632,6 +632,8 @@ class PlatMap {
      */
     displayLotDetails(lotData) {
         const statusClass = `status-${lotData.status.toLowerCase().replace(/\s+/g, '-')}`;
+        const statusKey = lotData.status.toLowerCase().replace(/\s+/g, '');
+        const isBookable = statusKey === 'available';
 
         let html = `
             <div class="lot-details">
@@ -687,13 +689,17 @@ class PlatMap {
             `;
         }
 
-        html += `
+        if (isBookable) {
+            html += `
                 <div class="detail-item" style="border: none; margin-top: 15px;">
                     <button class="book-btn" onclick="window.open('https://docs.google.com/forms/d/1s1bDxHw0f1DfecVyu2OAps2Epb02hyfYIEq5B1Pd49I/edit', '_blank')">
                         📅 Book This Unit
                     </button>
                 </div>
-            </div>`;
+            `;
+        }
+
+        html += `</div>`;
         this.detailsPanel.innerHTML = html;
     }
 
