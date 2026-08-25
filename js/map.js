@@ -656,7 +656,7 @@ class PlatMap {
                 </div>
 
                 <div class="detail-item">
-                    <div class="detail-label">Price</div>
+                    <div class="detail-label">PRICE FROM</div>
                     <div class="detail-value price">USD ${Number(lotData.price).toLocaleString()}</div>
                     <div class="detail-value" style="font-size: 12px; color: #7f8c8d; margin-top: 4px;">≈ RWF ${Number(lotData.price * 1470).toLocaleString()}</div>
                 </div>
