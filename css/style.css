@@ -76,6 +76,23 @@ body {
     text-transform: none;
 }
 
+.prescreener-btn {
+    display: inline-block;
+    margin-bottom: 10px;
+    padding: 8px 16px;
+    background-color: #1e7e34;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.prescreener-btn:hover {
+    background-color: #145c27;
+}
+
 .category-menu {
     display: flex;
     gap: 8px;
