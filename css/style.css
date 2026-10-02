@@ -76,6 +76,24 @@ body {
     text-transform: none;
 }
 
+.mortgage-btn {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: #1e7e34;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    vertical-align: middle;
+}
+
+.mortgage-btn:hover {
+    background: #145c27;
+}
+
 .category-menu {
     display: flex;
     gap: 8px;
